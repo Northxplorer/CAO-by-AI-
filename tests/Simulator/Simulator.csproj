@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <!-- Inclure les fichiers source de la logique métier (sans les commandes AutoCAD) -->
+    <Compile Include="..\..\src\AutoCadCopilot\Models\*.cs" />
+    <Compile Include="..\..\src\AutoCadCopilot\Geometry\*.cs" />
+    <Compile Include="..\..\src\AutoCadCopilot\Analysis\*.cs" />
+    <!-- Inclure les mocks AutoCAD -->
+    <Compile Include="Mocks\AutoCADMocks.cs" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- On désactive AUTOCAD spécifiquement pour ce projet afin que les mocks soient compilés -->
+    <DefineConstants></DefineConstants>
+  </PropertyGroup>
+
+</Project>

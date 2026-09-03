@@ -1,0 +1,52 @@
+--- SIMULATEUR DE TESTS SYNTHÉTIQUES (PHASE 2) ---
+
+TEST: Pièce simple (01)
+Entrée: Mocks géométriques (Pièce simple (01))
+Espaces attendus: 1 | Espaces détectés: 1
+Surface attendue: 200000 | obtenue: 200000
+Périmètre attendu: 1800 | obtenu: 1800
+Gaps détectés: 0 (attendu: 0)
+Textes associés: 1
+Classification: attendue Bureau | obtenue Bureau
+GeometryConfidence: 1.00
+RoomTypeConfidence: 0.80
+OverallConfidence: 0.80
+Statut: attendu OK | obtenu OK
+-> RESULTAT: PASS
+
+TEST: Pièces adjacentes avec murs croisés (02)
+Entrée: Mocks géométriques (Pièces adjacentes avec murs croisés (02))
+Espaces attendus: 2 | Espaces détectés: 3
+-> RESULTAT: FAIL
+
+TEST: Gaps et Portes
+Entrée: Mocks géométriques (Gaps et Portes)
+Espaces attendus: 1 | Espaces détectés: 1
+Surface attendue: 200000 | obtenue: 200000
+Périmètre attendu: 1800 | obtenu: 1800
+Gaps détectés: 1 (attendu: 2)
+Textes associés: 0
+Classification: attendue Inconnu | obtenue Inconnu
+GeometryConfidence: 0.90
+RoomTypeConfidence: 0.00
+OverallConfidence: 0.00
+Statut: attendu A_VERIFIER | obtenu A_VERIFIER
+-> RESULTAT: FAIL
+
+TEST: Intersections imparfaites et doublons
+Espaces détectés: 1 (attendu: 1)
+-> RESULTAT: PASS
+
+TEST: Sémantique Ambiguë (Meuble Bureau)
+Entrée: Mocks géométriques (Sémantique Ambiguë (Meuble Bureau))
+Espaces attendus: 1 | Espaces détectés: 1
+Surface attendue: 10000 | obtenue: 10000
+Périmètre attendu: 400 | obtenu: 400
+Gaps détectés: 1 (attendu: 0)
+Textes associés: 1
+Classification: attendue Bureau | obtenue Inconnu
+GeometryConfidence: 0.90
+RoomTypeConfidence: 0.00
+OverallConfidence: 0.00
+Statut: attendu A_VERIFIER | obtenu A_VERIFIER
+-> RESULTAT: FAIL

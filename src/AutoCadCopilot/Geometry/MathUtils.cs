@@ -45,6 +45,27 @@ namespace AutoCadCopilot.Geometry
         }
 
         /// <summary>
+        /// Calcule le périmètre d'un polygone fermé.
+        /// </summary>
+        public static double CalculatePerimeter(List<Point3d> polygon)
+        {
+            if (polygon.Count < 2) return 0;
+
+            double perimeter = 0;
+            for (int i = 0; i < polygon.Count - 1; i++)
+            {
+                perimeter += polygon[i].DistanceTo(polygon[i + 1]);
+            }
+            // Si le polygone n'est pas explicitement fermé en ajoutant le premier point à la fin, on le ferme.
+            if (polygon.First().DistanceTo(polygon.Last()) > 0.001)
+            {
+                 perimeter += polygon.Last().DistanceTo(polygon.First());
+            }
+
+            return perimeter;
+        }
+
+        /// <summary>
         /// Calcule le centre géométrique d'un polygone (moyenne des sommets pour un calcul rapide et suffisant).
         /// </summary>
         public static Point3d CalculateCentroid(List<Point3d> polygon)
