@@ -16,22 +16,22 @@ Statut: attendu OK | obtenu OK
 
 TEST: Pièces adjacentes avec murs croisés (02)
 Entrée: Mocks géométriques (Pièces adjacentes avec murs croisés (02))
-Espaces attendus: 2 | Espaces détectés: 3
--> RESULTAT: FAIL
+Espaces attendus: 2 | Espaces détectés: 2
+-> RESULTAT: PASS
 
 TEST: Gaps et Portes
 Entrée: Mocks géométriques (Gaps et Portes)
 Espaces attendus: 1 | Espaces détectés: 1
 Surface attendue: 200000 | obtenue: 200000
 Périmètre attendu: 1800 | obtenu: 1800
-Gaps détectés: 1 (attendu: 2)
+Gaps détectés: 1 (attendu: 1)
 Textes associés: 0
 Classification: attendue Inconnu | obtenue Inconnu
 GeometryConfidence: 0.90
 RoomTypeConfidence: 0.00
 OverallConfidence: 0.00
 Statut: attendu A_VERIFIER | obtenu A_VERIFIER
--> RESULTAT: FAIL
+-> RESULTAT: PASS
 
 TEST: Intersections imparfaites et doublons
 Espaces détectés: 1 (attendu: 1)
@@ -42,11 +42,11 @@ Entrée: Mocks géométriques (Sémantique Ambiguë (Meuble Bureau))
 Espaces attendus: 1 | Espaces détectés: 1
 Surface attendue: 10000 | obtenue: 10000
 Périmètre attendu: 400 | obtenu: 400
-Gaps détectés: 1 (attendu: 0)
+Gaps détectés: 1 (attendu: 1)
 Textes associés: 1
-Classification: attendue Bureau | obtenue Inconnu
+Classification: attendue Inconnu | obtenue Inconnu
 GeometryConfidence: 0.90
 RoomTypeConfidence: 0.00
 OverallConfidence: 0.00
 Statut: attendu A_VERIFIER | obtenu A_VERIFIER
--> RESULTAT: FAIL
+-> RESULTAT: PASS

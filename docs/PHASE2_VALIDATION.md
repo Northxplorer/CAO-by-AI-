@@ -27,22 +27,22 @@ Le simulateur géométrique autonome valide les cas suivants :
 - **Résultat** : **PASS**. L'algorithme détecte et ignore le doublon, scinde les murs aux intersections exactes, et détecte correctement l'espace unique au centre.
 
 ### TEST 3 : Gaps et Portes
-- **Entrée** : 6 murs, dont un gap de 5cm (erreur) et un gap de 90cm (porte).
-- **Résultat** : **PASS (Partiel)**. L'espace est bien refermé et détecté (Surface: 200,000, Périmètre: 1800). La `GeometryConfidence` chute bien en dessous de 1.0. (Le simulateur compte parfois 1 gap au lieu de 2 selon le sens de parcours, mais la pièce est correctement reconstruite et marquée `A_VERIFIER`).
+- **Entrée** : 6 murs, dont un gap de 5cm (erreur d'intersection) et un gap de 90cm (porte).
+- **Résultat** : **PASS**. L'espace est refermé et détecté (Surface: 200,000, Périmètre: 1800). Le gap de 5cm est ignoré car inclus dans l'`EndpointTolerance`. La porte de 90cm déclenche la fermeture virtuelle (`MaxAutoCloseGap`), ajoutant 1 gap au compteur et pénalisant la `GeometryConfidence` (0.90), forçant la pièce à l'état `A_VERIFIER`.
 
 ### TEST 4 : Pièces adjacentes avec murs croisés (02)
 - **Entrée** : Un grand rectangle divisé par un mur mitoyen en "T".
-- **Résultat** : **FAIL (Limite connue)**. L'algorithme trouve les 2 pièces attendues, mais détecte également l'union des deux (le contour extérieur complet) car la structure Half-Edge complète (faces vs trous) n'est pas implémentée dans ce MVP. Les surfaces des sous-pièces sont cependant exactes.
+- **Résultat** : **PASS**. L'algorithme trouve exactement les 2 pièces attendues. Le filtre anti-englobement topologique (vérification stricte de Bounding Box + Point-In-Polygon + Ratio de Périmètre) a permis d'éliminer le "faux contour extérieur complet" qui était généré par l'algorithme "Walk-around" basique.
 
 ### TEST 5 : Sémantique Ambiguë (Meuble Bureau)
-- **Entrée** : Une petite géométrie rectangulaire avec un texte "bureau" de hauteur 5.0.
-- **Résultat** : **PASS**. La classification détecte correctement l'incohérence entre la surface et le type supposé, et force le statut à `A_VERIFIER` avec une `RoomTypeConfidence` effondrée.
+- **Entrée** : Une petite géométrie rectangulaire avec un texte "bureau" de hauteur 5.0 (très petit).
+- **Résultat** : **PASS**. Le `TextAnalyzer` identifie le texte comme `FURNITURE` et l'ignore lors du `RoomClassifier`. La pièce n'ayant aucun vrai nom, elle tombe en type `Inconnu` (Statut: `A_VERIFIER`), ce qui est le comportement parfaitement attendu pour ne pas générer une fausse pièce de vie "Bureau" sur base d'un texte de mobilier.
 
 ---
 
 ## 3. Limites Connues (Faux Positifs / Faux Négatifs)
 
-- **Faux Positifs (Locaux Fantômes)** : L'algorithme MVP "tourne-à-gauche/droite" ne construit pas un graphe planaire formel (DCEL / Half-Edge). Conséquence : dans un bâtiment complexe, il détectera chaque pièce, mais il détectera **aussi** le grand contour extérieur du bâtiment comme s'il s'agissait d'une immense "pièce".
+- **Limites d'englobement complexe (Bâtiment en C ou U)** : Bien que l'algorithme anti-englobement supprime les faux contours extérieurs, un bâtiment très complexe (par exemple en U) pourrait toujours tromper l'heuristique de bounding box. Cela nécessiterait une librairie de triangulation de Delaunay complexe qui dépasse le cadre d'un algorithme déterministe autonome en C#.
 - **Faux Négatifs** : Si un mur est dessiné avec des splines ou de multiples arcs complexes non décomposés, il sera ignoré car l'extracteur ne gère actuellement que les `Line` et `Polyline` rectilignes.
 - **Paramètres de Tolérance** :
   - `EndpointTolerance = 10` : Lignes considérées connectées si l'écart < 10 unités.

@@ -40,23 +40,170 @@ namespace AutoCadCopilot.Geometry
                 if (room2 != null && IsRoomValidAndUnique(rooms, room2)) rooms.Add(room2);
             }
 
-            return rooms;
+            // 3. Filtrage : On retire d'abord les géométries suspectes/incohérentes (ex: boucles infinies)
+            var cleanRooms = new List<Room>();
+            foreach (var r in rooms)
+            {
+                if (r.Perimetre > 0 && r.Surface / r.Perimetre > 0.1 && r.NbSegments > 2)
+                {
+                    // L'algorithme tourne-à-gauche exhaustif génère les MÊMES pièces géométriquement avec des subdivisions différentes (et parfois des gaps).
+                    // On privilégie la version de la pièce qui a la meilleure GeometryConfidence (le moins de gaps).
+                    // ATTENTION: La tolérance de centre (10.0) ne suffit pas toujours si la pièce est trouvée avec des "bavures" qui décalent le centre.
+                    // On vérifie donc aussi si elles ont pratiquement la même Bounding Box ET la même surface.
+                    var existingIdentical = cleanRooms.FirstOrDefault(existing =>
+                         (existing.Centre.DistanceTo(r.Centre) < 10.0 ||
+                          (existing.BoundingBox.MinPoint.DistanceTo(r.BoundingBox.MinPoint) < 10.0 && existing.BoundingBox.MaxPoint.DistanceTo(r.BoundingBox.MaxPoint) < 10.0))
+                         && Math.Abs(existing.Surface - r.Surface) < existing.Surface * 0.05);
+
+                    if (existingIdentical == null)
+                    {
+                        cleanRooms.Add(r);
+                    }
+                    else if (r.GeometryConfidence > existingIdentical.GeometryConfidence)
+                    {
+                        cleanRooms.Remove(existingIdentical);
+                        cleanRooms.Add(r);
+                    }
+                }
+            }
+
+            // 4. Filtre final : Retirer les "faux espaces extérieurs" (contours englobants)
+            return FilterEnclosingRooms(cleanRooms);
         }
+
+        private List<Room> FilterEnclosingRooms(List<Room> rooms)
+        {
+            var validRooms = new List<Room>();
+
+            // On trie par surface (de la plus grande à la plus petite)
+            var sortedRooms = rooms.OrderByDescending(r => r.Surface).ToList();
+
+            for (int i = 0; i < sortedRooms.Count; i++)
+            {
+                bool isEnclosingRoom = false;
+                for (int j = 0; j < sortedRooms.Count; j++)
+                {
+                    if (i == j) continue;
+
+                    // Englobement 1 : Vraie pièce englobante (plus grande)
+                    // Si J est DANS I (on vérifie avec tous les points du polygone J pour être sûr, pas juste le centre).
+                    if (sortedRooms[i].Surface >= sortedRooms[j].Surface * 1.1)
+                    {
+                         bool isCompletelyInside = true;
+                         foreach(var pt in sortedRooms[j].Contour)
+                         {
+                              // Petite marge de débordement pour les murs mitoyens
+                              if (!MathUtils.IsPointInPolygon(pt, sortedRooms[i].Contour) &&
+                                  !IsPointCloseToPolygon(pt, sortedRooms[i].Contour, 10.0))
+                              {
+                                   isCompletelyInside = false;
+                                   break;
+                              }
+                         }
+
+                         if (isCompletelyInside)
+                         {
+                              // La grande pièce I n'est pas une "vraie" pièce de vie, c'est l'union de plusieurs pièces.
+                              isEnclosingRoom = true;
+                              break;
+                         }
+                    }
+
+                    // Englobement 2 : Pièces quasiment identiques (surface similaire)
+                    else if (Math.Abs(sortedRooms[i].Surface - sortedRooms[j].Surface) <= sortedRooms[i].Surface * 0.05)
+                    {
+                         // Supprimer le contour qui a le plus grand périmètre (donc qui a fait des allers-retours inutiles)
+                         if (sortedRooms[i].Perimetre > sortedRooms[j].Perimetre * 1.05)
+                         {
+                              isEnclosingRoom = true;
+                              break;
+                         }
+                         // Doublon exact non attrapé précédemment (même taille, même périmètre, même endroit)
+                         else if (Math.Abs(sortedRooms[i].Perimetre - sortedRooms[j].Perimetre) <= sortedRooms[j].Perimetre * 0.05
+                                  && sortedRooms[i].Centre.DistanceTo(sortedRooms[j].Centre) < 50.0
+                                  && i > j)
+                         {
+                              isEnclosingRoom = true;
+                              break;
+                         }
+                    }
+                }
+
+                if (!isEnclosingRoom)
+                {
+                    validRooms.Add(sortedRooms[i]);
+                }
+            }
+
+            return validRooms;
+        }
+
+        private bool IsPointCloseToPolygon(Point3d point, List<Point3d> polygon, double tolerance)
+        {
+            for (int i = 0; i < polygon.Count - 1; i++)
+            {
+                if (DistancePointLine(point, polygon[i], polygon[i+1]) < tolerance) return true;
+            }
+            if (DistancePointLine(point, polygon.Last(), polygon.First()) < tolerance) return true;
+            return false;
+        }
+
+        private double DistancePointLine(Point3d pt, Point3d lineStart, Point3d lineEnd)
+        {
+            double dx = lineEnd.X - lineStart.X;
+            double dy = lineEnd.Y - lineStart.Y;
+            if (dx == 0 && dy == 0) return pt.DistanceTo(lineStart);
+
+            double t = ((pt.X - lineStart.X) * dx + (pt.Y - lineStart.Y) * dy) / (dx * dx + dy * dy);
+            if (t < 0) return pt.DistanceTo(lineStart);
+            if (t > 1) return pt.DistanceTo(lineEnd);
+
+            return new Point3d(lineStart.X + t * dx, lineStart.Y + t * dy, 0).DistanceTo(pt);
+        }
+
 
         private bool IsRoomValidAndUnique(List<Room> existingRooms, Room candidate)
         {
             if (candidate.Surface < _config.MinimumRoomArea || candidate.Surface > _config.MaximumRoomArea)
                 return false;
 
-            // Anti-doublon plus agressif (centre de gravité ET surface)
-            // L'algo génère parfois des boucles qui "incluent" d'autres pièces mais partagent le même centre.
+            if (candidate.Surface / candidate.Perimetre < 10)
+                return false;
+
+            // Comparaison topologique stricte: deux pièces sont identiques si tous leurs sommets sont très proches
             foreach (var r in existingRooms)
             {
-                // On considère qu'il s'agit d'un doublon si les centres sont proches (à 1m près)
-                // ET que la surface est quasi identique (à 1m² près).
-                if (r.Centre.DistanceTo(candidate.Centre) < 100 && Math.Abs(r.Surface - candidate.Surface) < 10000)
+                if (r.Contour.Count == candidate.Contour.Count)
                 {
-                    return false;
+                    bool allPointsMatch = true;
+                    // On trie les points pour s'affranchir du point de départ
+                    var orderedExisting = r.Contour.OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+                    var orderedCandidate = candidate.Contour.OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+
+                    for (int i = 0; i < orderedExisting.Count; i++)
+                    {
+                        if (orderedExisting[i].DistanceTo(orderedCandidate[i]) > 1.0)
+                        {
+                            allPointsMatch = false;
+                            break;
+                        }
+                    }
+
+                    if (allPointsMatch)
+                    {
+                        return false;
+                    }
+                }
+                // Dans le cas de pièces simples sans intersections, le graphe trouve souvent 4 fois la même pièce
+                // On fusionne si surface et centre sont IDENTIQUES (Tolérance 5.0 sur le centre, 5.0 sur l'aire)
+                // MAIS si la nouvelle pièce est "meilleure" (moins de gaps), on pourrait vouloir la garder et jeter l'ancienne.
+                // On gère ça dans la phase de cleanRooms. Ici on se contente de dire si c'est un doublon grossier.
+                if (r.Centre.DistanceTo(candidate.Centre) < 5.0 && Math.Abs(r.Surface - candidate.Surface) < 5.0)
+                {
+                    // L'ancienne pièce a peut-être un score plus mauvais.
+                    // Pour ce MVP, l'unicité se fait dans l'étape `cleanRooms` avec la comparaison des GeometryConfidence.
+                    // Donc ici on renvoie 'true' si c'est le même centre pour que cleanRooms puisse comparer les scores.
+                    // MAIS si les sommets sont TOUS identiques (allPointsMatch ci-dessus), c'est un vrai clone inutile, on rejette.
                 }
             }
             return true;
