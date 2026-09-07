@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using AutoCadCopilot.Models;
+using AutoCadCopilot.Geometry;
 
 namespace AutoCadCopilot.AutoCAD
 {

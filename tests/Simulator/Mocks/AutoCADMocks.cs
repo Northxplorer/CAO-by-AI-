@@ -110,6 +110,11 @@ namespace Autodesk.AutoCAD.Geometry
             return Math.Atan2(det, dot);
         }
     }
+}
+
+namespace Autodesk.AutoCAD.DatabaseServices
+{
+    using Autodesk.AutoCAD.Geometry;
 
     public struct Extents3d
     {

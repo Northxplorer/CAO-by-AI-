@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Autodesk.AutoCAD.Geometry;
+using Autodesk.AutoCAD.DatabaseServices;
 using AutoCadCopilot.Geometry;
 using AutoCadCopilot.Analysis;
 using AutoCadCopilot.Models;
