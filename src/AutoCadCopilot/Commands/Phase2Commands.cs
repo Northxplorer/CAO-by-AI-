@@ -39,10 +39,30 @@ namespace AutoCadCopilot.Commands
                 // 2. Configuration & Analyse des segments
                 var config = new RoomDetectionConfig();
                 var segmentAnalyzer = new SegmentAnalyzer(config);
-                segmentAnalyzer.CategorizeSegments(rawSegments);
+                var diagnostic = segmentAnalyzer.CategorizeSegments(rawSegments);
 
-                int validWalls = rawSegments.Count(s => s.Category == SegmentCategory.WALL && !s.IsDuplicate);
-                ed.WriteMessage($"\n[2] Analyse segments: {validWalls} considérés comme murs valides.");
+                ed.WriteMessage($"\n[2] Analyse segments:");
+                ed.WriteMessage($"\n      - {diagnostic.TotalRetainedAsWall} considérés comme murs valides.");
+                ed.WriteMessage($"\n      - {diagnostic.TotalRejected} rejetés.");
+
+                ed.WriteMessage("\n   >> Répartition par type d'entité :");
+                foreach(var kvp in diagnostic.SegmentsByEntityType)
+                {
+                     ed.WriteMessage($"\n          * {kvp.Key} : {kvp.Value}");
+                }
+
+                ed.WriteMessage("\n   >> Top 5 Calques présents :");
+                var topLayers = diagnostic.SegmentsByLayer.OrderByDescending(kvp => kvp.Value).Take(5);
+                foreach(var kvp in topLayers)
+                {
+                     ed.WriteMessage($"\n          * {kvp.Key} : {kvp.Value}");
+                }
+
+                ed.WriteMessage("\n   >> Raisons de rejet :");
+                foreach(var kvp in diagnostic.RejectionReasons)
+                {
+                     ed.WriteMessage($"\n          * {kvp.Value} rejetés car : {kvp.Key}");
+                }
 
                 // 3. Détection géométrique
                 var spaceDetector = new SpaceDetector(config);

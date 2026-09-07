@@ -20,7 +20,8 @@ namespace AutoCadCopilot.AutoCAD
                 {
                     segments.Add(new SegmentInfo(
                         new LineSegment2d(new Point2d(line.StartPoint.X, line.StartPoint.Y), new Point2d(line.EndPoint.X, line.EndPoint.Y)),
-                        ent.Layer
+                        ent.Layer,
+                        "Line"
                     ));
                 }
                 else if (ent is Polyline polyline)
@@ -30,7 +31,7 @@ namespace AutoCadCopilot.AutoCAD
                     {
                         if (polyline.GetSegmentType(i) == SegmentType.Line)
                         {
-                            segments.Add(new SegmentInfo(polyline.GetLineSegment2dAt(i), ent.Layer));
+                            segments.Add(new SegmentInfo(polyline.GetLineSegment2dAt(i), ent.Layer, "Polyline"));
                         }
                     }
                 }

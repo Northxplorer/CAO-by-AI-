@@ -15,9 +15,17 @@ namespace AutoCadCopilot.Geometry
             _config = config;
         }
 
-        public void CategorizeSegments(List<SegmentInfo> segments)
+        public SegmentDiagnosticReport CategorizeSegments(List<SegmentInfo> segments)
         {
-            // 1. Marquer les doublons (géométries quasi-identiques)
+            var report = new SegmentDiagnosticReport();
+
+            // 1. Enregistrement initial
+            foreach (var seg in segments)
+            {
+                report.RegisterSegment(seg.Layer, seg.EntityType);
+            }
+
+            // 2. Marquer les doublons (géométries quasi-identiques)
             for (int i = 0; i < segments.Count; i++)
             {
                 if (segments[i].IsDuplicate) continue;
@@ -33,11 +41,13 @@ namespace AutoCadCopilot.Geometry
                          segments[i].Geometry.EndPoint.GetDistanceTo(segments[j].Geometry.StartPoint) < _config.EndpointTolerance))
                     {
                         segments[j].IsDuplicate = true;
+                        segments[j].RejectionReason = "Doublon géométrique";
+                        report.RegisterRejection(segments[j].RejectionReason);
                     }
                 }
             }
 
-            // 2. Score et Catégorisation
+            // 3. Score et Catégorisation
             foreach (var seg in segments)
             {
                 if (seg.IsDuplicate) continue;
@@ -49,6 +59,8 @@ namespace AutoCadCopilot.Geometry
                 {
                     seg.Category = SegmentCategory.UNKNOWN;
                     seg.Score = -1.0;
+                    seg.RejectionReason = $"Calque ignoré : {seg.Layer}";
+                    report.RegisterRejection(seg.RejectionReason);
                     continue;
                 }
 
@@ -65,16 +77,35 @@ namespace AutoCadCopilot.Geometry
                 else if (length > 100.0)
                     seg.Score += 1.0;
 
+                // Si le segment est issu d'une polyligne fermée, il y a de fortes chances que ce soit un pilier ou un mur,
+                // même si le calque n'est pas "MUR".
+                if (seg.EntityType == "Polyline")
+                {
+                    seg.Score += 0.5; // Bonus léger pour la structure polyligne
+                }
+
+                // Pour accepter des lignes sur un calque inconnu (0.0 de base), il faut qu'elles soient significativement longues.
+                // Cela évite de rejeter un plan entier où l'architecte a dessiné les murs sur un calque nommé "0" ou "Dessin".
+                if (seg.Score >= 0.0 && length > 50.0 && seg.EntityType == "Line")
+                {
+                    seg.Score += 1.0;
+                }
+
                 // Décision MVP
                 if (seg.Score >= 1.0)
                 {
                     seg.Category = SegmentCategory.WALL;
+                    report.TotalRetainedAsWall++;
                 }
                 else
                 {
                     seg.Category = SegmentCategory.UNKNOWN;
+                    seg.RejectionReason = $"Score insuffisant ({seg.Score:F1}) - L:{length:F1}";
+                    report.RegisterRejection("Score insuffisant (probablement pas un mur architectural)");
                 }
             }
+
+            return report;
         }
     }
 }

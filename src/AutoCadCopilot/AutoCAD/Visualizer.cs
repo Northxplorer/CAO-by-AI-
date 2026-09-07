@@ -81,7 +81,7 @@ namespace AutoCadCopilot.AutoCAD
                 lt.UpgradeOpen();
                 LayerTableRecord ltr = new LayerTableRecord();
                 ltr.Name = layerName;
-                ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 1); // Rouge
+                ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 1); // Rouge par défaut
                 lt.Add(ltr);
                 tr.AddNewlyCreatedDBObject(ltr, true);
             }
@@ -98,9 +98,21 @@ namespace AutoCadCopilot.AutoCAD
                     line.Layer = layerName;
 
                     if (seg.IsDuplicate)
-                        line.ColorIndex = 5; // Bleu pour les doublons
+                    {
+                        line.ColorIndex = 5; // Bleu pour les doublons géométriques
+                    }
+                    else if (seg.RejectionReason.Contains("Score"))
+                    {
+                        line.ColorIndex = 1; // Rouge pour score insuffisant
+                    }
+                    else if (seg.RejectionReason.Contains("Calque ignoré"))
+                    {
+                        line.ColorIndex = 8; // Gris pour calque ignoré
+                    }
                     else
-                        line.ColorIndex = 1; // Rouge pour les rejets
+                    {
+                        line.ColorIndex = 2; // Jaune (autres rejets)
+                    }
 
                     btr.AppendEntity(line);
                     tr.AddNewlyCreatedDBObject(line, true);

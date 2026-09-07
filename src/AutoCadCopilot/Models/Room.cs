@@ -5,6 +5,35 @@ using Autodesk.AutoCAD.DatabaseServices;
 
 namespace AutoCadCopilot.Models
 {
+    public class SegmentDiagnosticReport
+    {
+        public int TotalExtracted { get; set; } = 0;
+        public int TotalRetainedAsWall { get; set; } = 0;
+        public int TotalRejected { get; set; } = 0;
+
+        public Dictionary<string, int> SegmentsByLayer { get; set; } = new Dictionary<string, int>();
+        public Dictionary<string, int> SegmentsByEntityType { get; set; } = new Dictionary<string, int>();
+        public Dictionary<string, int> RejectionReasons { get; set; } = new Dictionary<string, int>();
+
+        public void RegisterSegment(string layer, string entityType)
+        {
+            TotalExtracted++;
+
+            if (!SegmentsByLayer.ContainsKey(layer)) SegmentsByLayer[layer] = 0;
+            SegmentsByLayer[layer]++;
+
+            if (!SegmentsByEntityType.ContainsKey(entityType)) SegmentsByEntityType[entityType] = 0;
+            SegmentsByEntityType[entityType]++;
+        }
+
+        public void RegisterRejection(string reason)
+        {
+            TotalRejected++;
+            if (!RejectionReasons.ContainsKey(reason)) RejectionReasons[reason] = 0;
+            RejectionReasons[reason]++;
+        }
+    }
+
     public enum RoomType
     {
         Bureau,
