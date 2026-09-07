@@ -231,7 +231,7 @@ namespace AutoCadCopilot.Geometry
 
                 // Vecteur de direction actuel
                 Vector2d currentDir = new Vector2d(lastPoint.X - previousPoint.X, lastPoint.Y - previousPoint.Y);
-                if (currentDir.LengthSq == 0) break;
+                if (currentDir.Length == 0.0) break;
                 currentDir = currentDir.GetNormal();
 
                 LineSegment2d nextLine = null;
@@ -265,7 +265,7 @@ namespace AutoCadCopilot.Geometry
                     {
                         // Calculer l'angle orienté (vecteur u -> v)
                         Vector2d candidateDir = new Vector2d(candidateEndPoint.X - candidateStartPoint.X, candidateEndPoint.Y - candidateStartPoint.Y);
-                        if (candidateDir.LengthSq == 0) continue;
+                        if (candidateDir.Length == 0.0) continue;
                         candidateDir = candidateDir.GetNormal();
 
                         // Produit scalaire (Dot) et déterminant (Cross 2D) pour trouver l'angle relatif

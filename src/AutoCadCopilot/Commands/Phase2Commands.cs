@@ -7,6 +7,7 @@ using AutoCadCopilot.AutoCAD;
 using AutoCadCopilot.Geometry;
 using AutoCadCopilot.Models;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace AutoCadCopilot.Commands
 {
