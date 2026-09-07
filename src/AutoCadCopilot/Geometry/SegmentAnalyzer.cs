@@ -25,7 +25,9 @@ namespace AutoCadCopilot.Geometry
                 report.RegisterSegment(seg.Layer, seg.EntityType);
             }
 
-            // 2. Marquer les doublons (géométries quasi-identiques)
+            // 2. Analyse Géométrique des Doublons, Parallèles et Chevauchements
+            report.ToleranceDoublonStricte = _config.StrictDuplicateTolerance;
+
             for (int i = 0; i < segments.Count; i++)
             {
                 if (segments[i].IsDuplicate) continue;
@@ -34,15 +36,32 @@ namespace AutoCadCopilot.Geometry
                 {
                     if (segments[j].IsDuplicate) continue;
 
-                    // Si les segments ont (à peu près) les mêmes start/end points
-                    if ((segments[i].Geometry.StartPoint.GetDistanceTo(segments[j].Geometry.StartPoint) < _config.EndpointTolerance &&
-                         segments[i].Geometry.EndPoint.GetDistanceTo(segments[j].Geometry.EndPoint) < _config.EndpointTolerance) ||
-                        (segments[i].Geometry.StartPoint.GetDistanceTo(segments[j].Geometry.EndPoint) < _config.EndpointTolerance &&
-                         segments[i].Geometry.EndPoint.GetDistanceTo(segments[j].Geometry.StartPoint) < _config.EndpointTolerance))
+                    double distStartStart = segments[i].Geometry.StartPoint.GetDistanceTo(segments[j].Geometry.StartPoint);
+                    double distEndEnd = segments[i].Geometry.EndPoint.GetDistanceTo(segments[j].Geometry.EndPoint);
+                    double distStartEnd = segments[i].Geometry.StartPoint.GetDistanceTo(segments[j].Geometry.EndPoint);
+                    double distEndStart = segments[i].Geometry.EndPoint.GetDistanceTo(segments[j].Geometry.StartPoint);
+
+                    // A. Vrai doublon strict (ex: copier/coller au même endroit)
+                    if ((distStartStart < _config.StrictDuplicateTolerance && distEndEnd < _config.StrictDuplicateTolerance) ||
+                        (distStartEnd < _config.StrictDuplicateTolerance && distEndStart < _config.StrictDuplicateTolerance))
                     {
+                        // S'ils n'ont pas le même calque, c'est peut être volontaire, mais s'ils l'ont, c'est un pur doublon.
+                        // Pour le MVP: On garde celui du calque le plus "Wall" ou le premier venu.
                         segments[j].IsDuplicate = true;
-                        segments[j].RejectionReason = "Doublon géométrique";
+                        segments[j].RejectionReason = "Doublon géométrique strict";
                         report.RegisterRejection(segments[j].RejectionReason);
+                        report.DoublonsStricts++;
+                        continue;
+                    }
+
+                    // B. Lignes colinéaires ou parallèles proches (ex: les 2 faces d'un mur)
+                    // On ne les rejette PAS en "doublon géométrique" comme avant (EndpointTolerance était trop large).
+                    // On les garde et on logge pour debug. Le SpaceDetector devra gérer ces faces avec la scission des intersections.
+                    if ((distStartStart < _config.WallThicknessTolerance && distEndEnd < _config.WallThicknessTolerance) ||
+                        (distStartEnd < _config.WallThicknessTolerance && distEndStart < _config.WallThicknessTolerance))
+                    {
+                        // C'est un mur (deux faces)
+                        report.LignesParallelesProches++;
                     }
                 }
             }

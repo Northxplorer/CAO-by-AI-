@@ -18,8 +18,14 @@ namespace AutoCadCopilot.Models
         public double MinimumRoomArea { get; set; } = 5000.0; // 0.5m²
         public double MaximumRoomArea { get; set; } = 2000000.0; // 200m²
 
+        // Tolérance pour la détection stricte des doublons (géométries parfaitement superposées)
+        public double StrictDuplicateTolerance { get; set; } = 0.5; // Très petite marge pour les erreurs d'arrondi
+
+        // Tolérance pour identifier des lignes parallèles représentant les 2 faces d'un même mur/cloison
+        public double WallThicknessTolerance { get; set; } = 35.0; // Une cloison fait souvent 5, 7, 10 ou 30cm d'épaisseur
+
         // Indices liés aux noms de calques
-        public List<string> WallLayerHints { get; set; } = new List<string> { "MUR", "CLOISON", "WALL", "A-WALL" };
-        public List<string> IgnoreLayerHints { get; set; } = new List<string> { "MOBILIER", "ELEC", "COTATION", "TEXT", "HACHURE" };
+        public List<string> WallLayerHints { get; set; } = new List<string> { "MUR", "CLOISON", "WALL", "A-WALL", "NEUBAU", "ARCHI", "MUR INT", "MUR EXT" };
+        public List<string> IgnoreLayerHints { get; set; } = new List<string> { "MOBILIER", "ELEC", "COTATION", "TEXT", "HACHURE", "DIM", "AXE" };
     }
 }

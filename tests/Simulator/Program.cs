@@ -21,6 +21,7 @@ namespace AutoCadCopilot.Simulator
             Test_GapsEtPortes();
             Test_IntersectionsImparfaites();
             Test_SemanticAmbigue();
+            Test_MursMultiCouches();
         }
 
         static void PrintResult(string testName, int expectedRooms, int actualRooms, Room room = null, double expectedArea = 0, double expectedPerim = 0, RoomStatus expectedStatus = RoomStatus.OK, RoomType expectedType = RoomType.Inconnu, int expectedGaps = 0)
@@ -175,6 +176,31 @@ namespace AutoCadCopilot.Simulator
             // Du coup la pièce tombe en INCONNU, ce qui est le comportement parfaitement attendu pour ne pas générer une fausse pièce de vie.
             // L'algo ferme les petits carrés sans intersection avec 1 gap car les segments n'ont pas été "splittés". C'est OK.
             PrintResult("Sémantique Ambiguë (Meuble Bureau)", 1, rooms.Count, rooms.Count > 0 ? rooms[0] : null, 10000, 400, RoomStatus.A_VERIFIER, RoomType.Inconnu, 1);
+        }
+
+        static void Test_MursMultiCouches()
+        {
+            var segments = new List<SegmentInfo>
+            {
+                // Face extérieure (mur de 10)
+                new SegmentInfo(new LineSegment2d(new Point2d(0, 0), new Point2d(500, 0)), "A-WALL"),
+                new SegmentInfo(new LineSegment2d(new Point2d(500, 0), new Point2d(500, 400)), "A-WALL"),
+                new SegmentInfo(new LineSegment2d(new Point2d(500, 400), new Point2d(0, 400)), "A-WALL"),
+                new SegmentInfo(new LineSegment2d(new Point2d(0, 400), new Point2d(0, 0)), "A-WALL"),
+                // Face intérieure
+                new SegmentInfo(new LineSegment2d(new Point2d(10, 10), new Point2d(490, 10)), "A-WALL"),
+                new SegmentInfo(new LineSegment2d(new Point2d(490, 10), new Point2d(490, 390)), "A-WALL"),
+                new SegmentInfo(new LineSegment2d(new Point2d(490, 390), new Point2d(10, 390)), "A-WALL"),
+                new SegmentInfo(new LineSegment2d(new Point2d(10, 390), new Point2d(10, 10)), "A-WALL")
+            };
+
+            var config = new RoomDetectionConfig();
+            var analyzer = new SegmentAnalyzer(config);
+            var report = analyzer.CategorizeSegments(segments);
+
+            Console.WriteLine($"\nTEST: Murs multicouches (Lignes parallèles)");
+            Console.WriteLine($"Lignes parallèles identifiées par l'analyseur : {report.LignesParallelesProches} (attendu: 4)");
+            Console.WriteLine($"-> RESULTAT: {(report.LignesParallelesProches >= 4 ? "PASS" : "FAIL")}");
         }
     }
 }

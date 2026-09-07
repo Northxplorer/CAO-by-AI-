@@ -11,6 +11,11 @@ namespace AutoCadCopilot.Models
         public int TotalRetainedAsWall { get; set; } = 0;
         public int TotalRejected { get; set; } = 0;
 
+        public int DoublonsStricts { get; set; } = 0;
+        public int LignesParallelesProches { get; set; } = 0;
+        public int ChevauchementsPartiels { get; set; } = 0;
+        public double ToleranceDoublonStricte { get; set; } = 0.0;
+
         public Dictionary<string, int> SegmentsByLayer { get; set; } = new Dictionary<string, int>();
         public Dictionary<string, int> SegmentsByEntityType { get; set; } = new Dictionary<string, int>();
         public Dictionary<string, int> RejectionReasons { get; set; } = new Dictionary<string, int>();

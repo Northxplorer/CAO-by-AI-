@@ -67,6 +67,22 @@ def create_test_files(output_dir):
     msp9.add_text("LOCAL TECHNIQUE").set_placement((250, 200))
     doc9.saveas(os.path.join(output_dir, "09_intersections_doublons.dxf"))
 
+    # TEST 10: Deux faces parallèles d'un mur (Cloison épaisse)
+    doc10 = ezdxf.new()
+    msp10 = doc10.modelspace()
+    # Face intérieure
+    msp10.add_line((10, 10), (490, 10))
+    msp10.add_line((490, 10), (490, 390))
+    msp10.add_line((490, 390), (10, 390))
+    msp10.add_line((10, 390), (10, 10))
+    # Face extérieure (mur de 10 d'épaisseur)
+    msp10.add_line((0, 0), (500, 0))
+    msp10.add_line((500, 0), (500, 400))
+    msp10.add_line((500, 400), (0, 400))
+    msp10.add_line((0, 400), (0, 0))
+    msp10.add_text("CHAMBRE").set_placement((250, 200))
+    doc10.saveas(os.path.join(output_dir, "10_murs_multicouches.dxf"))
+
     print(f"Fichiers de test DXF avancés générés dans : {output_dir}")
 
 if __name__ == "__main__":

@@ -50,3 +50,7 @@ RoomTypeConfidence: 0.00
 OverallConfidence: 0.00
 Statut: attendu A_VERIFIER | obtenu A_VERIFIER
 -> RESULTAT: PASS
+
+TEST: Murs multicouches (Lignes parallèles)
+Lignes parallèles identifiées par l'analyseur : 4 (attendu: 4)
+-> RESULTAT: PASS

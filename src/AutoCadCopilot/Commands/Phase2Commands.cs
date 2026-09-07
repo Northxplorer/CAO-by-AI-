@@ -58,6 +58,11 @@ namespace AutoCadCopilot.Commands
                      ed.WriteMessage($"\n          * {kvp.Key} : {kvp.Value}");
                 }
 
+                ed.WriteMessage("\n   >> Topologie :");
+                ed.WriteMessage($"\n          * Tolérance doublon stricte : {diagnostic.ToleranceDoublonStricte:F2}");
+                ed.WriteMessage($"\n          * Doublons stricts trouvés  : {diagnostic.DoublonsStricts}");
+                ed.WriteMessage($"\n          * Lignes parallèles (murs): {diagnostic.LignesParallelesProches}");
+
                 ed.WriteMessage("\n   >> Raisons de rejet :");
                 foreach(var kvp in diagnostic.RejectionReasons)
                 {

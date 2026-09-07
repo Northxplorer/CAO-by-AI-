@@ -6,8 +6,8 @@ Ce document constitue le rapport de fin de Phase 2, détaillant l'architecture i
 
 La Phase 2 se décompose en plusieurs sous-systèmes indépendants (respectant la consigne de ne pas utiliser d'IA pour la géométrie) :
 - **Extraction (`AutoCAD/EntityExtractor.cs`)** : Lit le DWG et convertit les lignes et polylignes en objets neutres `SegmentInfo`, et les textes en `TextEntityInfo`.
-- **Analyse des Segments (`Geometry/SegmentAnalyzer.cs`)** : Identifie les doublons et filtre les lignes non-architecturales selon leur calque, leur longueur, etc.
-- **Détection Géométrique (`Geometry/SpaceDetector.cs`)** : Algorithme de reconstruction par "contournement" (Walk-around algorithm). Il scinde les lignes aux intersections pour traiter les murs en "T" et gère un paramètre de "snapping" (fermeture de gaps) pour tolérer les ouvertures/portes.
+- **Analyse des Segments (`Geometry/SegmentAnalyzer.cs`)** : Tolère les calques non standards ("0", "Dessin") si la géométrie est pertinente (Polyligne fermée ou Ligne de plus de 50 unités). Différencie rigoureusement les "doublons stricts" (rejetés) des "lignes parallèles" (ex: murs à deux faces, conservés). Génère un `SegmentDiagnosticReport`.
+- **Détection Géométrique (`Geometry/SpaceDetector.cs`)** : Algorithme de reconstruction par "contournement" (Walk-around algorithm). Il scinde les lignes aux intersections, gère un paramètre de "snapping" pour tolérer les portes, et filtre les "contours englobants" via une vérification topologique robuste (`Point-in-Polygon` + Bounding Box stricte).
 - **Calculs Métriques (`Geometry/MathUtils.cs`)** : Aire (Gauss), Centre de gravité, et **Périmètre**.
 - **Analyse Sémantique (`Analysis/TextAnalyzer.cs` et `RoomClassifier.cs`)** : Filtrage spatial (BoundingBox + RayCasting), catégorisation par taille/contenu (ex: distinction entre un cartouche, une annotation "bureau" de meuble, et un vrai nom de pièce).
 - **Interface (`AutoCAD/Visualizer.cs` et `Commands/Phase2Commands.cs`)** : Calques de Debug (`IA_DEBUG_ROOMS` et `IA_DEBUG_REJECTED`) et rapport textuel dans la console.
@@ -32,11 +32,15 @@ Le simulateur géométrique autonome valide les cas suivants :
 
 ### TEST 4 : Pièces adjacentes avec murs croisés (02)
 - **Entrée** : Un grand rectangle divisé par un mur mitoyen en "T".
-- **Résultat** : **PASS**. L'algorithme trouve exactement les 2 pièces attendues. Le filtre anti-englobement topologique (vérification stricte de Bounding Box + Point-In-Polygon + Ratio de Périmètre) a permis d'éliminer le "faux contour extérieur complet" qui était généré par l'algorithme "Walk-around" basique.
+- **Résultat** : **PASS**. L'algorithme trouve exactement les 2 pièces attendues. Le filtre anti-englobement topologique (vérification stricte de Bounding Box + Point-In-Polygon) a permis d'éliminer le "faux contour extérieur complet" qui était généré par l'algorithme "Walk-around" basique.
 
 ### TEST 5 : Sémantique Ambiguë (Meuble Bureau)
 - **Entrée** : Une petite géométrie rectangulaire avec un texte "bureau" de hauteur 5.0 (très petit).
 - **Résultat** : **PASS**. Le `TextAnalyzer` identifie le texte comme `FURNITURE` et l'ignore lors du `RoomClassifier`. La pièce n'ayant aucun vrai nom, elle tombe en type `Inconnu` (Statut: `A_VERIFIER`), ce qui est le comportement parfaitement attendu pour ne pas générer une fausse pièce de vie "Bureau" sur base d'un texte de mobilier.
+
+### TEST 6 : Murs Multicouches (Lignes parallèles)
+- **Entrée** : Un mur représenté par deux carrés imbriqués (une face intérieure, une face extérieure).
+- **Résultat** : **PASS**. Le `SegmentAnalyzer` ne les supprime pas abusivement comme "doublon géométrique" mais les identifie bien comme 4 groupes de lignes parallèles, transmettant l'entièreté de la géométrie au moteur d'espace.
 
 ---
 
@@ -61,7 +65,8 @@ La validation ultime de la Phase 2 doit être réalisée **par vos soins** sur u
 4. Tapez la commande `DETECT_ROOMS`.
 
 ### Résultats attendus sur le vrai DWG :
-- Le plugin affichera un **rapport de détection** textuel détaillé (Nombre d'espaces, nommés, classés, à vérifier, etc.).
+- Le plugin affichera un **rapport de diagnostic complet** détaillant pourquoi les segments sont conservés ou rejetés, le top 5 des calques utilisés, et le nombre exact de "doublons stricts" vs "lignes parallèles" détectés.
+- Le plugin affichera ensuite un **rapport de détection** textuel détaillé (Nombre d'espaces, nommés, classés, à vérifier, etc.).
 - Aucun objet de votre plan original ne sera modifié ni déplacé.
 - Un calque **IA_DEBUG_ROOMS** sera créé (Couleur Vert). Il contiendra les polygones des pièces détectées et les textes descriptifs (Type, Surface, Confiance) au centre. Les pièces douteuses (gaps ou classification ambiguë) seront tracées en **Orange**.
 - Un calque **IA_DEBUG_REJECTED** sera créé (Couleur Rouge/Bleu). Il affichera les lignes ignorées (doublons ou calques non pertinents).
