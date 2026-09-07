@@ -51,14 +51,14 @@ namespace AutoCadCopilot.AutoCAD
                 debugText.Location = room.Centre;
                 debugText.TextHeight = 15.0;
 
-                string content = $"{\\C2;TYPE:} {room.Type}\\P" +
-                                 $"{\\C2;NOM:} {room.Nom}\\P" +
-                                 $"{\\C2;CONF:} O:{room.OverallConfidence:P0} G:{room.GeometryConfidence:P0} T:{room.RoomTypeConfidence:P0}\\P" +
-                                 $"{\\C2;GAPS:} {room.NbOuvertures}\\P";
+                string content = $"{{\\C2;TYPE:}} {room.Type}\\P" +
+                                 $"{{\\C2;NOM:}} {room.Nom}\\P" +
+                                 $"{{\\C2;CONF:}} O:{room.OverallConfidence:P0} G:{room.GeometryConfidence:P0} T:{room.RoomTypeConfidence:P0}\\P" +
+                                 $"{{\\C2;GAPS:}} {room.NbOuvertures}\\P";
 
                 foreach(var msg in room.MessagesAvertissement)
                 {
-                    content += $"{\\C1;! {msg}}\\P"; // Rouge pour les messages
+                    content += $"{{\\C1;! {msg}}}\\P"; // Rouge pour les messages
                 }
 
                 debugText.Contents = content;
