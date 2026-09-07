@@ -15,16 +15,18 @@ namespace AutoCadCopilot.Geometry
             _config = config;
         }
 
-        public List<Room> DetectSpaces(List<SegmentInfo> segmentsInfos)
+        public (List<Room>, SpaceDetectionDiagnosticReport) DetectSpaces(List<SegmentInfo> segmentsInfos)
         {
             var rooms = new List<Room>();
+            var diag = new SpaceDetectionDiagnosticReport();
 
             // Ne garder que les murs valides, non dupliqués
             var walls = segmentsInfos.Where(s => s.Category == SegmentCategory.WALL && !s.IsDuplicate).ToList();
-            if (walls.Count == 0) return rooms;
+            diag.SegmentsEntrants = walls.Count;
+            if (walls.Count == 0) return (rooms, diag);
 
             // 1. Scission des segments aux points d'intersection pour supporter les murs en "T"
-            var splitLines = SplitAtIntersections(walls);
+            var splitLines = SplitAtIntersections(walls, diag);
 
             // 2. Recherche de boucles
             // On utilise une approche exhaustive simple pour le simulateur/MVP :
@@ -33,11 +35,11 @@ namespace AutoCadCopilot.Geometry
             for (int i = 0; i < splitLines.Count; i++)
             {
                 // Essayer dans les deux sens
-                var room1 = TryFindLoop(splitLines, splitLines[i], true);
-                if (room1 != null && IsRoomValidAndUnique(rooms, room1)) rooms.Add(room1);
+                var room1 = TryFindLoop(splitLines, splitLines[i], true, diag);
+                if (room1 != null && IsRoomValidAndUnique(rooms, room1, diag)) rooms.Add(room1);
 
-                var room2 = TryFindLoop(splitLines, splitLines[i], false);
-                if (room2 != null && IsRoomValidAndUnique(rooms, room2)) rooms.Add(room2);
+                var room2 = TryFindLoop(splitLines, splitLines[i], false, diag);
+                if (room2 != null && IsRoomValidAndUnique(rooms, room2, diag)) rooms.Add(room2);
             }
 
             // 3. Filtrage : On retire d'abord les géométries suspectes/incohérentes (ex: boucles infinies)
@@ -68,7 +70,9 @@ namespace AutoCadCopilot.Geometry
             }
 
             // 4. Filtre final : Retirer les "faux espaces extérieurs" (contours englobants)
-            return FilterEnclosingRooms(cleanRooms);
+            var finalRooms = FilterEnclosingRooms(cleanRooms);
+            diag.ContoursFinaux = finalRooms.Count;
+            return (finalRooms, diag);
         }
 
         private List<Room> FilterEnclosingRooms(List<Room> rooms)
@@ -162,13 +166,19 @@ namespace AutoCadCopilot.Geometry
         }
 
 
-        private bool IsRoomValidAndUnique(List<Room> existingRooms, Room candidate)
+        private bool IsRoomValidAndUnique(List<Room> existingRooms, Room candidate, SpaceDetectionDiagnosticReport diag)
         {
             if (candidate.Surface < _config.MinimumRoomArea || candidate.Surface > _config.MaximumRoomArea)
+            {
+                diag.BouclesRejeteesSurface++;
                 return false;
+            }
 
             if (candidate.Surface / candidate.Perimetre < 10)
+            {
+                diag.BouclesRejeteesPerimetre++;
                 return false;
+            }
 
             // Comparaison topologique stricte: deux pièces sont identiques si tous leurs sommets sont très proches
             foreach (var r in existingRooms)
@@ -191,6 +201,7 @@ namespace AutoCadCopilot.Geometry
 
                     if (allPointsMatch)
                     {
+                        diag.BouclesRejeteesDoublon++;
                         return false;
                     }
                 }
@@ -206,10 +217,11 @@ namespace AutoCadCopilot.Geometry
                     // MAIS si les sommets sont TOUS identiques (allPointsMatch ci-dessus), c'est un vrai clone inutile, on rejette.
                 }
             }
+            diag.BouclesCandidates++;
             return true;
         }
 
-        private Room TryFindLoop(List<LineSegment2d> allLines, LineSegment2d startLine, bool forward)
+        private Room TryFindLoop(List<LineSegment2d> allLines, LineSegment2d startLine, bool forward, SpaceDetectionDiagnosticReport diag)
         {
             var currentPolygon = new List<Point3d>();
             var localUsedLines = new HashSet<LineSegment2d> { startLine };
@@ -224,7 +236,7 @@ namespace AutoCadCopilot.Geometry
             int openingsDetected = 0;
             double geoConfidence = 1.0;
 
-            while (!loopClosed && currentPolygon.Count < 30) // Sécurité
+            while (!loopClosed && currentPolygon.Count < 500) // Limite de sécurité augmentée pour les pièces complexes
             {
                 Point3d lastPoint = currentPolygon.Last();
                 Point3d previousPoint = currentPolygon[currentPolygon.Count - 2];
@@ -321,6 +333,12 @@ namespace AutoCadCopilot.Geometry
                 }
                 else
                 {
+                    diag.CulDeSacRencontres++;
+                    // On garde une trace des impasses suffisamment longues pour le debug visuel
+                    if (currentPolygon.Count > 3)
+                    {
+                        diag.ImpassesGeometriques.Add(new List<Point3d>(currentPolygon));
+                    }
                     break;
                 }
             }
@@ -346,27 +364,69 @@ namespace AutoCadCopilot.Geometry
         }
 
         // Divise les lignes qui se croisent (pour les jonctions en T)
-        private List<LineSegment2d> SplitAtIntersections(List<SegmentInfo> walls)
+        private List<LineSegment2d> SplitAtIntersections(List<SegmentInfo> walls, SpaceDetectionDiagnosticReport diag)
         {
             var splitLines = new List<LineSegment2d>();
 
+            // Index Spatial basique (Grid) pour éviter le O(N²) sur les intersections
+            double gridSize = 500.0;
+            var grid = new Dictionary<string, List<SegmentInfo>>();
+
             foreach (var w in walls)
             {
-                var points = new List<Point2d> { w.Geometry.StartPoint, w.Geometry.EndPoint };
+                int minGx = (int)(Math.Min(w.Geometry.StartPoint.X, w.Geometry.EndPoint.X) / gridSize);
+                int maxGx = (int)(Math.Max(w.Geometry.StartPoint.X, w.Geometry.EndPoint.X) / gridSize);
+                int minGy = (int)(Math.Min(w.Geometry.StartPoint.Y, w.Geometry.EndPoint.Y) / gridSize);
+                int maxGy = (int)(Math.Max(w.Geometry.StartPoint.Y, w.Geometry.EndPoint.Y) / gridSize);
 
-                foreach (var other in walls)
+                for (int x = minGx; x <= maxGx; x++)
                 {
-                    if (w == other) continue;
+                    for (int y = minGy; y <= maxGy; y++)
+                    {
+                        string key = $"{x},{y}";
+                        if (!grid.ContainsKey(key)) grid[key] = new List<SegmentInfo>();
+                        grid[key].Add(w);
+                    }
+                }
+            }
 
-                    var intersection = w.Geometry.IntersectWith(other.Geometry);
+            foreach (var w1 in walls)
+            {
+                var points = new List<Point2d> { w1.Geometry.StartPoint, w1.Geometry.EndPoint };
+
+                int minGx = (int)(Math.Min(w1.Geometry.StartPoint.X, w1.Geometry.EndPoint.X) / gridSize);
+                int maxGx = (int)(Math.Max(w1.Geometry.StartPoint.X, w1.Geometry.EndPoint.X) / gridSize);
+                int minGy = (int)(Math.Min(w1.Geometry.StartPoint.Y, w1.Geometry.EndPoint.Y) / gridSize);
+                int maxGy = (int)(Math.Max(w1.Geometry.StartPoint.Y, w1.Geometry.EndPoint.Y) / gridSize);
+
+                var candidatesForW1 = new HashSet<SegmentInfo>();
+
+                for (int x = minGx; x <= maxGx; x++)
+                {
+                    for (int y = minGy; y <= maxGy; y++)
+                    {
+                        string key = $"{x},{y}";
+                        if (grid.ContainsKey(key))
+                        {
+                            foreach(var c in grid[key]) candidatesForW1.Add(c);
+                        }
+                    }
+                }
+
+                foreach (var w2 in candidatesForW1)
+                {
+                    if (w1 == w2) continue;
+
+                    var intersection = w1.Geometry.IntersectWith(w2.Geometry);
                     if (intersection != null && intersection.Length > 0)
                     {
+                        diag.IntersectionsTrouvees++;
                         points.Add(intersection[0]);
                     }
                 }
 
                 // Trier les points le long de la ligne
-                var sortedPoints = points.OrderBy(p => p.GetDistanceTo(w.Geometry.StartPoint)).ToList();
+                var sortedPoints = points.OrderBy(p => p.GetDistanceTo(w1.Geometry.StartPoint)).ToList();
 
                 // Retirer les points en double pour éviter les segments de longueur 0
                 var uniquePoints = new List<Point2d>();
@@ -383,6 +443,7 @@ namespace AutoCadCopilot.Geometry
                 {
                     if (uniquePoints[k].GetDistanceTo(uniquePoints[k+1]) > 0.1) // Segment min
                     {
+                        diag.SegmentsScindes++;
                         splitLines.Add(new LineSegment2d(uniquePoints[k], uniquePoints[k+1]));
                     }
                 }

@@ -4,11 +4,12 @@ namespace AutoCadCopilot.Models
 {
     public class RoomDetectionConfig
     {
-        // Tolérance pour considérer que deux extrémités se touchent
-        public double EndpointTolerance { get; set; } = 10.0;
+        // Tolérance pour considérer que deux extrémités se touchent (Augmentée pour faciliter le "Corner Snap" des vrais plans)
+        // Les murs extérieurs et intérieurs ne se touchent pas toujours mathématiquement.
+        public double EndpointTolerance { get; set; } = 30.0;
 
         // Taille maximale d'un gap qui sera automatiquement fermé (ex: porte, petite ouverture)
-        public double MaxAutoCloseGap { get; set; } = 120.0;
+        public double MaxAutoCloseGap { get; set; } = 150.0;
 
         // Taille typique d'une porte pour classifier les gaps (ex: entre 70 et 100)
         public double MinDoorGap { get; set; } = 70.0;

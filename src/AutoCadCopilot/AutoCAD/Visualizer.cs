@@ -9,6 +9,42 @@ namespace AutoCadCopilot.AutoCAD
 {
     public class Visualizer
     {
+        public void DrawPartialLoops(Transaction tr, Database db, List<List<Point3d>> loops)
+        {
+            string layerName = "IA_DEBUG_PARTIAL_LOOP";
+
+            LayerTable lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+            if (!lt.Has(layerName))
+            {
+                lt.UpgradeOpen();
+                LayerTableRecord ltr = new LayerTableRecord();
+                ltr.Name = layerName;
+                ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 6); // Magenta pour voir les culs-de-sac
+                lt.Add(ltr);
+                tr.AddNewlyCreatedDBObject(ltr, true);
+            }
+
+            BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            BlockTableRecord btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+
+            foreach (var loop in loops)
+            {
+                if (loop.Count > 1)
+                {
+                    Polyline poly = new Polyline();
+                    for (int i = 0; i < loop.Count; i++)
+                    {
+                        poly.AddVertexAt(i, new Point2d(loop[i].X, loop[i].Y), 0, 0, 0);
+                    }
+                    poly.Closed = false; // Par définition, ce sont des impasses
+                    poly.Layer = layerName;
+
+                    btr.AppendEntity(poly);
+                    tr.AddNewlyCreatedDBObject(poly, true);
+                }
+            }
+        }
+
         public void DrawRoomDebugData(Transaction tr, Database db, List<Room> rooms)
         {
             string layerName = "IA_DEBUG_ROOMS";

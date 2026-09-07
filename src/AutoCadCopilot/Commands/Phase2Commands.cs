@@ -42,6 +42,7 @@ namespace AutoCadCopilot.Commands
                 var diagnostic = segmentAnalyzer.CategorizeSegments(rawSegments);
 
                 ed.WriteMessage($"\n[2] Analyse segments:");
+                ed.WriteMessage($"\n      - Segments entrants: {diagnostic.TotalExtracted}");
                 ed.WriteMessage($"\n      - {diagnostic.TotalRetainedAsWall} considérés comme murs valides.");
                 ed.WriteMessage($"\n      - {diagnostic.TotalRejected} rejetés.");
 
@@ -71,7 +72,17 @@ namespace AutoCadCopilot.Commands
 
                 // 3. Détection géométrique
                 var spaceDetector = new SpaceDetector(config);
-                List<Room> rooms = spaceDetector.DetectSpaces(rawSegments);
+                var detectionResult = spaceDetector.DetectSpaces(rawSegments);
+                List<Room> rooms = detectionResult.Item1;
+                var spaceDiag = detectionResult.Item2;
+
+                ed.WriteMessage($"\n[3] Détection Topologique:");
+                ed.WriteMessage($"\n      - {spaceDiag.IntersectionsTrouvees} intersections trouvées (O(N) optimisé).");
+                ed.WriteMessage($"\n      - {spaceDiag.SegmentsScindes} segments scindés.");
+                ed.WriteMessage($"\n      - {spaceDiag.BouclesCandidates} boucles candidates générées.");
+                ed.WriteMessage($"\n      - {spaceDiag.CulDeSacRencontres} impasses (culs-de-sac) rencontrées.");
+                ed.WriteMessage($"\n      - Rejets : {spaceDiag.BouclesRejeteesDoublon} doublons, {spaceDiag.BouclesRejeteesSurface} surfaces hors limites, {spaceDiag.BouclesRejeteesPerimetre} ratios périmètres aberrants.");
+                ed.WriteMessage($"\n      - {spaceDiag.ContoursFinaux} pièces finales retenues.");
 
                 // 4. Analyse et Association des textes
                 var textAnalyzer = new TextAnalyzer();
@@ -86,6 +97,8 @@ namespace AutoCadCopilot.Commands
                 visualizer.DrawRoomDebugData(tr, db, rooms);
                 // Afficher les murs rejetés et les doublons comme demandé dans l'objectif 8 (DEBUG)
                 visualizer.DrawRejectedSegments(tr, db, rawSegments);
+                // Afficher les "culs-de-sac" pour comprendre où l'algorithme "tourne-à-gauche" s'arrête (très utile sur le DWG de l'utilisateur avec 0 local)
+                visualizer.DrawPartialLoops(tr, db, spaceDiag.ImpassesGeometriques);
 
                 tr.Commit();
 

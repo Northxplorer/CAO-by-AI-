@@ -75,7 +75,8 @@ namespace AutoCadCopilot.Simulator
 
             var config = new RoomDetectionConfig();
             new SegmentAnalyzer(config).CategorizeSegments(segments);
-            var rooms = new SpaceDetector(config).DetectSpaces(segments);
+            var detectionResult = new SpaceDetector(config).DetectSpaces(segments);
+            var rooms = detectionResult.Item1;
             new TextAnalyzer().AssignTextsToRooms(rooms, texts);
             new RoomClassifier().ClassifyRooms(rooms);
 
@@ -97,7 +98,8 @@ namespace AutoCadCopilot.Simulator
 
             var config = new RoomDetectionConfig();
             new SegmentAnalyzer(config).CategorizeSegments(segments);
-            var rooms = new SpaceDetector(config).DetectSpaces(segments);
+            var detectionResult = new SpaceDetector(config).DetectSpaces(segments);
+            var rooms = detectionResult.Item1;
 
             // Doit détecter 2 pièces grace à l'intersection.
             PrintResult("Pièces adjacentes avec murs croisés (02)", 2, rooms.Count);
@@ -117,7 +119,8 @@ namespace AutoCadCopilot.Simulator
 
             var config = new RoomDetectionConfig();
             new SegmentAnalyzer(config).CategorizeSegments(segments);
-            var rooms = new SpaceDetector(config).DetectSpaces(segments);
+            var detectionResult = new SpaceDetector(config).DetectSpaces(segments);
+            var rooms = detectionResult.Item1;
 
             // On s'attend à 1 Gap détecté (la porte de 90).
             // Le gap de 5cm est sous la tolérance EndpointTolerance (10.0), il ne déclenche donc pas de pénalité de "Gap".
@@ -137,7 +140,8 @@ namespace AutoCadCopilot.Simulator
 
             var config = new RoomDetectionConfig();
             new SegmentAnalyzer(config).CategorizeSegments(segments);
-            var rooms = new SpaceDetector(config).DetectSpaces(segments);
+            var detectionResult = new SpaceDetector(config).DetectSpaces(segments);
+            var rooms = detectionResult.Item1;
 
             Console.WriteLine($"\nTEST: Intersections imparfaites et doublons");
             Console.WriteLine($"Espaces détectés: {rooms.Count} (attendu: 1)");
@@ -161,7 +165,8 @@ namespace AutoCadCopilot.Simulator
 
             var config = new RoomDetectionConfig();
             new SegmentAnalyzer(config).CategorizeSegments(segments);
-            var rooms = new SpaceDetector(config).DetectSpaces(segments);
+            var detectionResult = new SpaceDetector(config).DetectSpaces(segments);
+            var rooms = detectionResult.Item1;
 
             // Pour ce test on veut une bbox correcte
             if (rooms.Count > 0)

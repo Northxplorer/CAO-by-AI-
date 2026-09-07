@@ -5,6 +5,20 @@ using Autodesk.AutoCAD.DatabaseServices;
 
 namespace AutoCadCopilot.Models
 {
+    public class SpaceDetectionDiagnosticReport
+    {
+        public int SegmentsEntrants { get; set; } = 0;
+        public int IntersectionsTrouvees { get; set; } = 0;
+        public int SegmentsScindes { get; set; } = 0;
+        public int BouclesCandidates { get; set; } = 0;
+        public int CulDeSacRencontres { get; set; } = 0;
+        public int BouclesRejeteesSurface { get; set; } = 0;
+        public int BouclesRejeteesPerimetre { get; set; } = 0;
+        public int BouclesRejeteesDoublon { get; set; } = 0;
+        public int ContoursFinaux { get; set; } = 0;
+        public List<List<Point3d>> ImpassesGeometriques { get; set; } = new List<List<Point3d>>();
+    }
+
     public class SegmentDiagnosticReport
     {
         public int TotalExtracted { get; set; } = 0;
