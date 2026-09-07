@@ -45,6 +45,66 @@ namespace AutoCadCopilot.AutoCAD
             }
         }
 
+        public void DrawTopologicalGraph(Transaction tr, Database db, SpaceDetectionDiagnosticReport diag)
+        {
+            string layerNodesName = "IA_DEBUG_GRAPH_NODES";
+            string layerEdgesName = "IA_DEBUG_GRAPH_EDGES";
+
+            LayerTable lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+
+            // Création calque Noeuds
+            if (!lt.Has(layerNodesName))
+            {
+                lt.UpgradeOpen();
+                LayerTableRecord ltr = new LayerTableRecord();
+                ltr.Name = layerNodesName;
+                ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 1); // Rouge (Nœuds critiques)
+                lt.Add(ltr);
+                tr.AddNewlyCreatedDBObject(ltr, true);
+            }
+
+            // Création calque Arêtes
+            if (!lt.Has(layerEdgesName))
+            {
+                lt.UpgradeOpen();
+                LayerTableRecord ltr = new LayerTableRecord();
+                ltr.Name = layerEdgesName;
+                ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 5); // Bleu
+                lt.Add(ltr);
+                tr.AddNewlyCreatedDBObject(ltr, true);
+            }
+
+            BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            BlockTableRecord btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+
+            // Dessiner les segments (Arêtes du graphe)
+            if (diag.SegmentsGraphe != null)
+            {
+                foreach (var seg in diag.SegmentsGraphe)
+                {
+                    Line line = new Line(new Point3d(seg.StartPoint.X, seg.StartPoint.Y, 0),
+                                         new Point3d(seg.EndPoint.X, seg.EndPoint.Y, 0));
+                    line.Layer = layerEdgesName;
+                    btr.AppendEntity(line);
+                    tr.AddNewlyCreatedDBObject(line, true);
+                }
+            }
+
+            // Dessiner les Nœuds de degré 1 (Impasses critiques)
+            if (diag.NoeudsCritiques != null)
+            {
+                foreach (var pt in diag.NoeudsCritiques)
+                {
+                    Circle circle = new Circle();
+                    circle.Center = pt;
+                    circle.Radius = 15.0; // Cercle bien visible
+                    circle.Layer = layerNodesName;
+                    btr.AppendEntity(circle);
+                    tr.AddNewlyCreatedDBObject(circle, true);
+                }
+            }
+        }
+
         public void DrawRoomDebugData(Transaction tr, Database db, List<Room> rooms)
         {
             string layerName = "IA_DEBUG_ROOMS";

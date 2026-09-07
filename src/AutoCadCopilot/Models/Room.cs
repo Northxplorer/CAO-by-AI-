@@ -10,13 +10,26 @@ namespace AutoCadCopilot.Models
         public int SegmentsEntrants { get; set; } = 0;
         public int IntersectionsTrouvees { get; set; } = 0;
         public int SegmentsScindes { get; set; } = 0;
+
+        // Métriques du graphe
+        public int NoeudsUniques { get; set; } = 0;
+        public int AretesFinales { get; set; } = 0;
+        public int NoeudsDegre1 { get; set; } = 0;
+        public int NoeudsDegre2 { get; set; } = 0;
+        public int NoeudsDegre3Plus { get; set; } = 0;
+        public int ComposantesConnexes { get; set; } = 0;
+        public int SegmentsIsolees { get; set; } = 0; // Segments sans aucune connexion aux deux bouts
+
         public int BouclesCandidates { get; set; } = 0;
         public int CulDeSacRencontres { get; set; } = 0;
         public int BouclesRejeteesSurface { get; set; } = 0;
         public int BouclesRejeteesPerimetre { get; set; } = 0;
         public int BouclesRejeteesDoublon { get; set; } = 0;
         public int ContoursFinaux { get; set; } = 0;
+
         public List<List<Point3d>> ImpassesGeometriques { get; set; } = new List<List<Point3d>>();
+        public List<Point3d> NoeudsCritiques { get; set; } = new List<Point3d>(); // Nœuds de degré 1 pour le debug visuel
+        public List<LineSegment2d> SegmentsGraphe { get; set; } = new List<LineSegment2d>(); // Pour affichage
     }
 
     public class SegmentDiagnosticReport

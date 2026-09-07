@@ -79,9 +79,18 @@ namespace AutoCadCopilot.Commands
                 ed.WriteMessage($"\n[3] Détection Topologique:");
                 ed.WriteMessage($"\n      - {spaceDiag.IntersectionsTrouvees} intersections trouvées (O(N) optimisé).");
                 ed.WriteMessage($"\n      - {spaceDiag.SegmentsScindes} segments scindés.");
+                ed.WriteMessage($"\n   >> Graphe Topologique :");
+                ed.WriteMessage($"\n          * Nœuds uniques     : {spaceDiag.NoeudsUniques}");
+                ed.WriteMessage($"\n          * Arêtes finales    : {spaceDiag.AretesFinales}");
+                ed.WriteMessage($"\n          * Nœuds Degré 1     : {spaceDiag.NoeudsDegre1} (culs-de-sac ou portes)");
+                ed.WriteMessage($"\n          * Nœuds Degré 2     : {spaceDiag.NoeudsDegre2} (continuités parfaites)");
+                ed.WriteMessage($"\n          * Nœuds Degré 3+    : {spaceDiag.NoeudsDegre3Plus} (intersections en T/X)");
+                ed.WriteMessage($"\n          * Composantes conn. : {spaceDiag.ComposantesConnexes}");
+                ed.WriteMessage($"\n          * Segments isolés   : {spaceDiag.SegmentsIsolees} (zéro connexion)");
+                ed.WriteMessage($"\n   >> Recherche de Cycles :");
                 ed.WriteMessage($"\n      - {spaceDiag.BouclesCandidates} boucles candidates générées.");
-                ed.WriteMessage($"\n      - {spaceDiag.CulDeSacRencontres} impasses (culs-de-sac) rencontrées.");
-                ed.WriteMessage($"\n      - Rejets : {spaceDiag.BouclesRejeteesDoublon} doublons, {spaceDiag.BouclesRejeteesSurface} surfaces hors limites, {spaceDiag.BouclesRejeteesPerimetre} ratios périmètres aberrants.");
+                ed.WriteMessage($"\n      - {spaceDiag.CulDeSacRencontres} impasses rencontrées lors du parcours.");
+                ed.WriteMessage($"\n      - Rejets : {spaceDiag.BouclesRejeteesDoublon} doublons, {spaceDiag.BouclesRejeteesSurface} surfaces limites, {spaceDiag.BouclesRejeteesPerimetre} périmètres.");
                 ed.WriteMessage($"\n      - {spaceDiag.ContoursFinaux} pièces finales retenues.");
 
                 // 4. Analyse et Association des textes
@@ -99,6 +108,9 @@ namespace AutoCadCopilot.Commands
                 visualizer.DrawRejectedSegments(tr, db, rawSegments);
                 // Afficher les "culs-de-sac" pour comprendre où l'algorithme "tourne-à-gauche" s'arrête (très utile sur le DWG de l'utilisateur avec 0 local)
                 visualizer.DrawPartialLoops(tr, db, spaceDiag.ImpassesGeometriques);
+
+                // Dessiner le graphe topologique pour voir l'état des connexions exactes des murs
+                visualizer.DrawTopologicalGraph(tr, db, spaceDiag);
 
                 tr.Commit();
 

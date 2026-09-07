@@ -28,6 +28,9 @@ namespace AutoCadCopilot.Geometry
             // 1. Scission des segments aux points d'intersection pour supporter les murs en "T"
             var splitLines = SplitAtIntersections(walls, diag);
 
+            // 1.5 Construction et Analyse Topologique du Graphe (pour Diagnostic)
+            AnalyzeTopologicalGraph(splitLines, diag);
+
             // 2. Recherche de boucles
             // On utilise une approche exhaustive simple pour le simulateur/MVP :
             // pour chaque segment, on tente de trouver le plus petit cycle le contenant, en tournant "à gauche" (ou à droite).
@@ -219,6 +222,110 @@ namespace AutoCadCopilot.Geometry
             }
             diag.BouclesCandidates++;
             return true;
+        }
+
+        private void AnalyzeTopologicalGraph(List<LineSegment2d> lines, SpaceDetectionDiagnosticReport diag)
+        {
+            diag.AretesFinales = lines.Count;
+            diag.SegmentsGraphe = lines.ToList(); // Garder pour affichage
+
+            // On regroupe les extrémités très proches (Snap Tolerance) pour créer les "nœuds" uniques
+            var nodes = new List<Point3d>();
+            var nodeDegrees = new Dictionary<int, int>(); // Index du noeud -> Degré
+            var lineToNodes = new List<Tuple<int, int>>(); // Line -> (NoeudStart, NoeudEnd)
+
+            foreach (var line in lines)
+            {
+                int node1 = FindOrAddNode(nodes, line.StartPoint, _config.EndpointTolerance);
+                int node2 = FindOrAddNode(nodes, line.EndPoint, _config.EndpointTolerance);
+
+                if (!nodeDegrees.ContainsKey(node1)) nodeDegrees[node1] = 0;
+                if (!nodeDegrees.ContainsKey(node2)) nodeDegrees[node2] = 0;
+
+                // Si la ligne n'est pas un point dégénéré
+                if (node1 != node2)
+                {
+                    nodeDegrees[node1]++;
+                    nodeDegrees[node2]++;
+                }
+
+                lineToNodes.Add(new Tuple<int, int>(node1, node2));
+            }
+
+            diag.NoeudsUniques = nodes.Count;
+
+            // Statistiques des degrés
+            foreach (var kvp in nodeDegrees)
+            {
+                int deg = kvp.Value;
+                if (deg == 1)
+                {
+                    diag.NoeudsDegre1++;
+                    diag.NoeudsCritiques.Add(nodes[kvp.Key]); // Mémoriser pour debug visuel
+                }
+                else if (deg == 2) diag.NoeudsDegre2++;
+                else if (deg >= 3) diag.NoeudsDegre3Plus++;
+            }
+
+            // Segments isolés (liés à rien des deux côtés, ou boucle isolée sur elle-même)
+            for (int i = 0; i < lines.Count; i++)
+            {
+                int n1 = lineToNodes[i].Item1;
+                int n2 = lineToNodes[i].Item2;
+                if (nodeDegrees[n1] <= 1 && nodeDegrees[n2] <= 1)
+                {
+                    diag.SegmentsIsolees++;
+                }
+            }
+
+            // Calcul basique des composantes connexes (BFS)
+            var visitedNodes = new HashSet<int>();
+            var adjList = new Dictionary<int, List<int>>();
+            foreach (var l in lineToNodes)
+            {
+                if (!adjList.ContainsKey(l.Item1)) adjList[l.Item1] = new List<int>();
+                if (!adjList.ContainsKey(l.Item2)) adjList[l.Item2] = new List<int>();
+                adjList[l.Item1].Add(l.Item2);
+                adjList[l.Item2].Add(l.Item1);
+            }
+
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                if (!visitedNodes.Contains(i))
+                {
+                    diag.ComposantesConnexes++;
+                    var queue = new Queue<int>();
+                    queue.Enqueue(i);
+                    visitedNodes.Add(i);
+
+                    while(queue.Count > 0)
+                    {
+                        int current = queue.Dequeue();
+                        if (adjList.ContainsKey(current))
+                        {
+                            foreach(var neighbor in adjList[current])
+                            {
+                                if (!visitedNodes.Contains(neighbor))
+                                {
+                                    visitedNodes.Add(neighbor);
+                                    queue.Enqueue(neighbor);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private int FindOrAddNode(List<Point3d> nodes, Point2d pt2d, double tolerance)
+        {
+            var pt = new Point3d(pt2d.X, pt2d.Y, 0);
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                if (nodes[i].DistanceTo(pt) <= tolerance) return i;
+            }
+            nodes.Add(pt);
+            return nodes.Count - 1;
         }
 
         private Room TryFindLoop(List<LineSegment2d> allLines, LineSegment2d startLine, bool forward, SpaceDetectionDiagnosticReport diag)
